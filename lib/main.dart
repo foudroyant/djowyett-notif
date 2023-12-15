@@ -1,8 +1,13 @@
+import 'dart:ui';
+
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -11,10 +16,39 @@ import 'firebase_options.dart';
 import 'dart:async';
 import 'dart:convert';
 
-final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+
+// this will be used as notification channel id
+const notificationChannelId = 'basic_channel';
+const notificationId = 0;
+
+/*
+@pragma('vm:entry-point') // Mandatory if the App is obfuscated or using Flutter 3.1+
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) {
+    print("Native called background task: $task"); //simpleTask will be emitted here.
+    notif("Une nouvelle navigation sur tel site.");
+
+    return Future.value(true);
+  });
+}
+*/
+
+notif(String body){
+  AwesomeNotifications().createNotification(content: NotificationContent(
+      id: 0,
+      channelKey :"basic_channel",
+      title: "Nouvelle navigation",
+      body: body
+  ));
+}
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  /*Workmanager().initialize(
+      callbackDispatcher, // The top level function, aka callbackDispatcher
+      isInDebugMode: true // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
+  );*/
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -24,8 +58,79 @@ void main() async{
       importance: NotificationImportance.Max, playSound: true, onlyAlertOnce: true, criticalAlerts: true
   ),
   ], debug: true);
+  await initializeService();
   runApp(const MyApp());
 }
+
+Future<void> initializeService() async{
+  final service = FlutterBackgroundService();
+
+  await service.configure(
+      androidConfiguration: AndroidConfiguration(
+        // this will be executed when app is in foreground or background in separated isolate
+        onStart: onStart,
+
+        // auto start service
+        autoStart: true,
+        isForegroundMode: true,
+
+        notificationChannelId: notificationChannelId, // this must match with notification channel you created above.
+        initialNotificationTitle: 'AWESOME SERVICE',
+        initialNotificationContent: 'Initializing',
+        foregroundServiceNotificationId: notificationId,
+      ),
+      iosConfiguration: IosConfiguration(
+        // auto start service
+        autoStart: true,
+
+        // this will be executed when app is in foreground in separated isolate
+        onForeground: onStart,
+
+        // you have to enable background fetch capability on xcode project
+        onBackground: onIosBackground,
+      ),
+  );
+}
+
+@pragma('vm:entry-point')
+Future<void> onStart(ServiceInstance service) async {
+  // Only available for flutter 3.0.0 and later
+  DartPluginRegistrant.ensureInitialized();
+
+  if (service is AndroidServiceInstance) {
+    service.on('setAsForeground').listen((event) {
+      service.setAsForegroundService();
+    });
+
+    service.on('setAsBackground').listen((event) {
+      service.setAsBackgroundService();
+    });
+  }
+
+  service.on('stopService').listen((event) {
+    service.stopSelf();
+  });
+
+  // bring to foreground
+  Timer.periodic(const Duration(seconds: 10), (timer) async {
+    if (service is AndroidServiceInstance) {
+      if (await service.isForegroundService()) {
+        print("BACKGROUND ANDROID");
+      }
+    }
+  });
+  print("HORS TIMER");
+}
+
+@pragma('vm:entry-point')
+Future<bool> onIosBackground(ServiceInstance service) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+  print("BACKGROUND IOS");
+
+  return true;
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -118,6 +223,21 @@ class _MyHomePageState extends State<MyHomePage> {
         AwesomeNotifications().requestPermissionToSendNotifications();
       }
     });
+    final service = FlutterBackgroundService();
+    service.startService();
+    FlutterBackgroundService().invoke("setAsForeground");
+
+    //Workmanager().registerOneOffTask("task-identifier", "simpleTask");
+    /*Workmanager().registerPeriodicTask("Tache-Periodique", "Tache-Periodique",
+      initialDelay: Duration(seconds: 20),
+      frequency: Duration(minutes: 5),
+        constraints: Constraints(
+          // connected or metered mark the task as requiring internet
+          networkType: NetworkType.connected,
+          // require external power
+          requiresCharging: true,
+        )
+    );*/
   }
 
   @override
