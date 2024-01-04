@@ -8,6 +8,35 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:478289729883:android:4df9b9a9b6119d11b2627e",
+        "android_client_info": {
+          "package_name": "com.bambyno.djowyettnotif"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "478289729883-j2kjnkkm00n1khl023l9pdl7r7lhkepd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8X0gYES9R42UKi7SFkmwCxhb6geCDkso"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "478289729883-j2kjnkkm00n1khl023l9pdl7r7lhkepd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:478289729883:android:725f659811c1eb11b2627e",
         "android_client_info": {
           "package_name": "com.djowyett.djowyett_otp"
